@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시 읽기 한 걸음씩 — 스스로 찾는 주제</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1f2933; --sub:#52606d;
+    --line:#d9dee5; --accent:#2f6f4f; --accent-soft:#e6f1ea;
+    --wrong:#c0392b; --wrong-soft:#fdecea; --right:#2f6f4f; --right-soft:#e6f1ea;
+    --hint:#8a6d1f; --hint-soft:#fbf3dc; --chip:#eef1f5;
+    --radius:14px; --shadow:0 1px 3px rgba(0,0,0,.06),0 6px 18px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181d; --card:#1d232b; --ink:#e7ecf2; --sub:#a7b2bf;
+      --line:#2c343d; --accent:#6fc79a; --accent-soft:#1d2f27;
+      --wrong:#f2a39b; --wrong-soft:#3a2420; --right:#8fe0b5; --right-soft:#16281f;
+      --hint:#e6cf8a; --hint-soft:#2f2a18; --chip:#262d35;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Pretendard","Apple SD Gothic Neo","맑은 고딕","Malgun Gothic",system-ui,sans-serif;
+    line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:16px 16px 80px}
+  header.top{padding:22px 4px 12px}
+  header.top h1{font-size:1.5rem;margin:0 0 6px;letter-spacing:-.02em}
+  header.top p{margin:0;color:var(--sub);font-size:.95rem}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:20px;margin:16px 0}
+  .muted{color:var(--sub)}
+  .center{text-align:center}
+
+  /* 시 선택 */
+  .poem-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:520px){.poem-grid{grid-template-columns:1fr}}
+  .poem-btn{display:block;width:100%;text-align:left;cursor:pointer;
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;transition:.15s;color:inherit}
+  .poem-btn:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .poem-btn .t{font-weight:700;font-size:1.05rem}
+  .poem-btn .a{color:var(--sub);font-size:.88rem;margin-top:2px}
+  .poem-btn .done{display:inline-block;margin-top:8px;font-size:.78rem;
+    background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 10px}
+
+  /* 진행바 */
+  .progress{display:flex;gap:6px;margin:4px 0 14px}
+  .progress .seg{flex:1;height:7px;border-radius:999px;background:var(--chip)}
+  .progress .seg.on{background:var(--accent)}
+  .stepmeta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .stepmeta .label{font-size:.82rem;color:var(--sub);font-weight:600;letter-spacing:.02em}
+
+  /* 시 본문 */
+  .poem-box{background:var(--chip);border-radius:12px;padding:16px 18px;margin:6px 0 2px;
+    white-space:pre-line;font-size:1.02rem;line-height:1.9}
+  .poem-title{font-weight:700;margin-bottom:2px}
+  .poem-author{color:var(--sub);font-size:.86rem;margin-bottom:10px}
+  details.gloss{margin-top:10px;border:1px dashed var(--line);border-radius:10px;padding:0 14px}
+  details.gloss summary{cursor:pointer;padding:10px 0;font-weight:600;color:var(--accent)}
+  details.gloss .body{padding:0 0 12px;white-space:pre-line;color:var(--sub);font-size:.95rem;line-height:1.8}
+
+  /* 질문 */
+  .q-stem{font-weight:700;font-size:1.08rem;margin:4px 0 4px}
+  .q-help{color:var(--sub);font-size:.92rem;margin:0 0 14px}
+  .opt{display:block;width:100%;text-align:left;cursor:pointer;margin:8px 0;
+    background:var(--card);border:1.5px solid var(--line);border-radius:12px;
+    padding:13px 15px;font-size:1rem;color:inherit;transition:.12s;line-height:1.5}
+  .opt:hover{border-color:var(--accent)}
+  .opt:disabled{cursor:default;opacity:1}
+  .opt.correct{border-color:var(--right);background:var(--right-soft)}
+  .opt.incorrect{border-color:var(--wrong);background:var(--wrong-soft)}
+  .opt .mark{font-weight:700;margin-right:6px}
+
+  .feedback{margin-top:12px;padding:13px 15px;border-radius:12px;font-size:.96rem;display:none}
+  .feedback.show{display:block}
+  .feedback.ok{background:var(--right-soft);border:1px solid var(--right)}
+  .feedback.no{background:var(--wrong-soft);border:1px solid var(--wrong)}
+  .feedback.hint{background:var(--hint-soft);border:1px solid var(--hint);color:var(--hint)}
+  .feedback b{color:inherit}
+
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .btn{cursor:pointer;border:none;border-radius:10px;padding:11px 18px;font-size:.98rem;
+    font-weight:600;transition:.15s}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:hover{filter:brightness(1.05)}
+  .btn.ghost{background:var(--chip);color:var(--ink)}
+  .btn.ghost:hover{filter:brightness(.97)}
+  .btn:disabled{opacity:.45;cursor:default}
+
+  /* 주제 단계 조립 카드 */
+  .assemble{background:var(--accent-soft);border-radius:12px;padding:14px 16px;margin:4px 0 14px}
+  .assemble .line{display:flex;gap:8px;margin:5px 0;font-size:.95rem}
+  .assemble .k{color:var(--sub);min-width:84px;font-weight:600}
+  .assemble .v{font-weight:600;color:var(--accent)}
+
+  /* 서술 입력 */
+  textarea{width:100%;min-height:80px;border:1.5px solid var(--line);border-radius:12px;
+    padding:12px;font:inherit;font-size:1rem;background:var(--card);color:inherit;resize:vertical}
+
+  /* 리포트 */
+  .report .stat{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}
+  .report .pill{background:var(--chip);border-radius:12px;padding:12px 16px;flex:1;min-width:130px;text-align:center}
+  .report .pill .n{font-size:1.5rem;font-weight:800}
+  .report .pill .l{font-size:.82rem;color:var(--sub)}
+  .report table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.92rem}
+  .report th,.report td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+  .report th{background:var(--chip);font-weight:700}
+  .report .weak{color:var(--wrong);font-weight:700}
+  .report .good{color:var(--right);font-weight:700}
+  .tag{display:inline-block;background:var(--wrong-soft);color:var(--wrong);
+    border-radius:999px;padding:3px 11px;font-size:.84rem;margin:3px 4px 3px 0;font-weight:600}
+  .tag.ok{background:var(--right-soft);color:var(--right)}
+
+  .back{background:none;border:none;color:var(--sub);cursor:pointer;font-size:.9rem;padding:6px 0;margin-top:6px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>시 읽기, 한 걸음씩</h1>
+    <p>화자 → 상황 → 심상 → 어조 → 태도·정서를 하나하나 찾다 보면, 마지막에 <b>주제</b>가 보여요.</p>
+  </header>
+
+  <!-- 시 선택 화면 -->
+  <section id="home">
+    <div class="card">
+      <p class="muted" style="margin-top:0">배울 시를 하나 골라 보세요. 끝낸 시에는 표시가 남아요.</p>
+      <div class="poem-grid" id="poemGrid"></div>
+    </div>
+    <div class="card center" id="reportEntry" style="display:none">
+      <p class="muted" style="margin:0 0 10px">지금까지 공부한 내용을 모아서 볼 수 있어요.</p>
+      <button class="btn primary" onclick="showReport()">📊 나의 학습 분석 보기</button>
+    </div>
+  </section>
+
+  <!-- 학습 화면 -->
+  <section id="study" class="hidden">
+    <button class="back" onclick="goHome()">← 시 목록으로</button>
+    <div class="stepmeta">
+      <span class="label" id="poemLabel"></span>
+      <span class="label" id="stepLabel"></span>
+    </div>
+    <div class="progress" id="progress"></div>
+
+    <div class="card" id="poemCard"></div>
+    <div class="card" id="qCard"></div>
+  </section>
+
+  <!-- 리포트 화면 -->
+  <section id="report" class="hidden"></section>
+</div>
+
+<script>
+/* ========================= 데이터 ========================= */
+/* 각 시: 6단계(stages). 각 단계 = {label, stem, help, options[], answer(index), explain, hint} */
+
+const POEMS = [
+  {
+    id:"gohyang",
+    title:"고향",
+    author:"정지용",
+    text:`고향에 고향에 돌아와도\n그리던 고향은 아니러뇨.\n\n산꿩이 알을 품고\n뻐꾸기 제철에 울건만,\n\n마음은 제 고향 지니지 않고\n머언 항구로 떠도는 구름.\n\n오늘도 메 끝에 홀로 오르니\n흰 점 꽃이 인정스레 웃고,\n\n어린 시절에 불던 풀피리 소리 아니 나고\n메마른 입술에 쓰디쓰다.\n\n고향에 고향에 돌아와도\n그리던 하늘만이 높푸르구나.`,
+    gloss:"메 : 산 / 메 끝 : 산꼭대기\n러뇨·구나 : 감탄하거나 혼잣말하듯 끝맺는 옛 말투",
+    stages:[
+      { label:"1단계 · 시적 화자",
+        stem:"이 시에서 말하는 이(시적 화자)는 어떤 사람일까요?",
+        help:"'돌아와도', '어린 시절에 불던 풀피리' 같은 표현에 주목해 보세요.",
+        options:[
+          "오랜만에 고향에 돌아온 사람",
+          "고향을 한 번도 떠난 적 없는 사람",
+          "고향을 싫어해서 떠나려는 사람",
+          "고향이 어디인지 모르는 아이"],
+        answer:0,
+        explain:"'고향에 돌아와도'라는 말에서, 화자는 고향을 떠났다가 다시 돌아온 사람임을 알 수 있어요.",
+        hint:"'돌아와도'라는 말은, 전에 이곳을 떠났던 사람만 할 수 있는 말이에요." },
+      { label:"2단계 · 대상·상황",
+        stem:"화자가 처한 상황으로 가장 알맞은 것은?",
+        help:"돌아온 고향이 화자의 마음과 같은지 다른지 살펴보세요.",
+        options:[
+          "고향에 돌아와 기쁨에 가득 차 있다",
+          "고향에 돌아왔지만 예전 같지 않아 쓸쓸해한다",
+          "고향을 떠나며 설레어한다",
+          "고향 친구들과 즐겁게 놀고 있다"],
+        answer:1,
+        explain:"'그리던 고향은 아니러뇨'에서 보듯, 돌아온 고향이 마음속 고향과 달라 화자는 쓸쓸함을 느껴요.",
+        hint:"'그리던 고향은 아니러뇨(아니더구나)'—돌아왔는데 왜 이런 말을 할까요?" },
+      { label:"3단계 · 주된 심상",
+        stem:"이 시에 가장 두드러지게 나타난 심상(이미지)은?",
+        help:"산꿩, 뻐꾸기 울음, 흰 꽃, 풀피리 소리… 어떤 감각이 많나요?",
+        options:[
+          "냄새를 맡는 후각적 심상이 중심이다",
+          "맛을 느끼는 미각적 심상만 있다",
+          "눈과 귀로 느끼는 시각·청각적 심상이 풍부하다",
+          "심상이 거의 나타나지 않는다"],
+        answer:2,
+        explain:"흰 꽃·구름(시각)과 뻐꾸기 울음·풀피리 소리(청각)처럼 보고 듣는 이미지가 풍부하게 어우러져 있어요. '쓰디쓰다'에는 미각도 살짝 섞여요.",
+        hint:"'흰 점 꽃'은 눈으로, '뻐꾸기 울음'은 귀로 느끼는 이미지예요." },
+      { label:"4단계 · 어조",
+        stem:"이 시에 나타난 화자의 어조로 가장 알맞은 것은?",
+        help:"누군가에게 말을 거는 느낌인가요, 혼자 조용히 읊조리는 느낌인가요?",
+        options:[
+          "밝고 명랑하게 노래하는 어조",
+          "쓸쓸하고 애상적인(슬픈) 어조",
+          "화를 내며 비판하는 어조",
+          "단호하게 명령하는 어조"],
+        answer:1,
+        explain:"돌아온 고향에서 느끼는 거리감과 그리움 때문에, 시 전체가 쓸쓸하고 애상적인 어조로 가라앉아 있어요.",
+        hint:"'쓰디쓰다', '아니러뇨'에서 느껴지는 분위기를 떠올려 보세요." },
+      { label:"5단계 · 태도·정서",
+        stem:"고향을 대하는 화자의 정서(마음)로 가장 알맞은 것은?",
+        help:"기대하고 돌아왔는데 느낀 감정이 무엇일까요?",
+        options:[
+          "다시 찾은 고향에 대한 만족과 기쁨",
+          "고향에 대한 미움과 분노",
+          "고향에 돌아왔어도 채워지지 않는 그리움과 상실감",
+          "고향을 떠나고 싶은 설렘"],
+        answer:2,
+        explain:"고향에 돌아왔지만 '그리던 고향'은 사라지고 없어, 화자는 그리움과 함께 잃어버린 것에 대한 상실감을 느껴요.",
+        hint:"몸은 고향에 있지만 '마음은 떠도는 구름'이라고 했어요." },
+      { label:"6단계 · 주제",
+        stem:"앞에서 찾은 것들을 모으면, 이 시의 주제는?",
+        help:"아래 조각들을 합치면 주제가 보여요.",
+        assemble:[
+          ["화자","고향에 돌아온 사람"],
+          ["상황","예전 같지 않은 고향"],
+          ["어조","쓸쓸·애상적"],
+          ["정서","그리움·상실감"]],
+        options:[
+          "고향에 돌아온 기쁨과 즐거움",
+          "돌아와도 채울 수 없는 고향 상실의 슬픔과 그리움",
+          "자연을 보호하자는 다짐",
+          "친구와의 우정에 대한 고마움"],
+        answer:1,
+        explain:"화자·상황·어조·정서를 모으면—'돌아와도 옛 고향은 사라지고 없어, 채울 수 없는 그리움과 상실감을 느낀다'가 이 시의 주제예요. 단계마다 찾은 것이 곧 주제의 조각이었죠!",
+        hint:"조각들(상실감·쓸쓸함·그리움)을 한 문장으로 이으면 돼요." }
+    ]
+  },
+
+  {
+    id:"haetbi",
+    title:"햇비",
+    author:"윤동주",
+    text:`아씨처럼 나린다\n보슬보슬 햇비\n맞아 주자 다 같이\n옥수숫대처럼 크게\n닷 자 엿 자 자라게\n햇님이 웃는다\n나 보고 웃는다.\n\n하늘 다리 놓였다\n알롱알롱 무지개\n노래하자 즐겁게\n동무들아 이리 오나\n다 같이 춤을 추자\n햇님이 웃는다\n즐거워 웃는다.`,
+    gloss:"햇비 : 해가 떠 있는데 잠깐 내리는 비 (여우비)\n닷 자 엿 자 : 다섯 자 여섯 자, 아주 크게라는 뜻\n동무 : 친구",
+    stages:[
+      { label:"1단계 · 시적 화자",
+        stem:"이 시의 화자는 어떤 사람으로 보이나요?",
+        help:"'동무들아 이리 오나', '춤을 추자' 같은 말투를 보세요.",
+        options:[
+          "혼자 조용히 생각에 잠긴 어른",
+          "친구들과 함께 즐거워하는 아이",
+          "고향을 떠나온 나그네",
+          "자연을 걱정하는 농부"],
+        answer:1,
+        explain:"친구(동무)를 부르며 함께 노래하고 춤추자고 하는, 밝고 천진한 아이의 목소리예요.",
+        hint:"'동무들아 이리 오나', '다 같이 춤을 추자'—누가 할 법한 말일까요?" },
+      { label:"2단계 · 대상·상황",
+        stem:"화자가 바라보고 있는 대상과 상황은?",
+        help:"어떤 날씨에, 무엇을 보며 노래하고 있나요?",
+        options:[
+          "눈 오는 겨울을 쓸쓸히 바라본다",
+          "캄캄한 밤에 혼자 걷는다",
+          "비가 내리는 가운데 해가 비치고 무지개가 떠 즐거워한다",
+          "메마른 땅을 걱정한다"],
+        answer:2,
+        explain:"해가 비치는 가운데 보슬비(햇비)가 내리고 무지개가 떠서, 화자는 그 밝은 풍경 속에서 즐거워해요.",
+        hint:"'알롱알롱 무지개', '하늘 다리 놓였다'를 떠올려 보세요." },
+      { label:"3단계 · 주된 심상",
+        stem:"이 시에서 두드러진 심상은?",
+        help:"'보슬보슬', '알롱알롱' 같은 말이 어떤 느낌을 주나요?",
+        options:[
+          "어둡고 차가운 촉각적 심상",
+          "밝고 환한 시각적 심상",
+          "쓴맛의 미각적 심상",
+          "비린내의 후각적 심상"],
+        answer:1,
+        explain:"'알롱알롱 무지개', '햇님이 웃는다'처럼 환하고 색깔이 선명한 시각적 심상이 밝은 분위기를 만들어요. '보슬보슬'은 청각·촉각의 느낌도 더해요.",
+        hint:"무지개와 웃는 햇님—눈으로 보면 어떤 느낌인가요?" },
+      { label:"4단계 · 어조",
+        stem:"이 시의 어조로 가장 알맞은 것은?",
+        help:"'~하자', '이리 오나'처럼 함께하자고 부르는 말투에 주목하세요.",
+        options:[
+          "슬프고 애절한 어조",
+          "밝고 경쾌하며 친근한 어조",
+          "엄격하게 꾸짖는 어조",
+          "쓸쓸하게 혼잣말하는 어조"],
+        answer:1,
+        explain:"친구를 부르며 함께 노래하고 춤추자고 권하는, 밝고 경쾌하면서도 친근한 어조예요.",
+        hint:"노래하자, 춤추자, 이리 오나—들뜨고 신나는 느낌이죠." },
+      { label:"5단계 · 태도·정서",
+        stem:"화자의 태도·정서로 가장 알맞은 것은?",
+        help:"자연과 세상을 어떻게 느끼고 있나요?",
+        options:[
+          "세상을 지루하고 답답하게 느낀다",
+          "자연과 어울려 밝고 즐겁게 생활하려 한다",
+          "자연을 두려워하며 피하려 한다",
+          "외로움에 잠겨 있다"],
+        answer:1,
+        explain:"햇비·무지개 같은 자연 속에서 친구들과 함께 즐기려는, 밝고 희망찬 태도가 드러나요.",
+        hint:"'다 같이', '즐겁게'라는 말에 화자의 마음이 담겨 있어요." },
+      { label:"6단계 · 주제",
+        stem:"조각들을 모으면, 이 시의 주제는?",
+        help:"아래 조각을 합쳐 보세요.",
+        assemble:[
+          ["화자","즐거워하는 아이"],
+          ["상황","햇비·무지개"],
+          ["어조","밝고 경쾌함"],
+          ["정서","즐거움·희망"]],
+        options:[
+          "고향을 잃은 슬픔",
+          "비 오는 날의 쓸쓸함",
+          "어른이 되기 싫은 마음",
+          "자연 속에서 친구들과 함께 느끼는 밝은 기쁨과 희망"],
+        answer:3,
+        explain:"밝은 아이의 목소리·햇비와 무지개·경쾌한 어조·즐거운 정서를 모으면—'자연과 어울려 친구들과 함께 느끼는 기쁨과 희망'이 주제예요.",
+        hint:"밝음·즐거움·함께—이 느낌을 한 문장으로!" }
+    ]
+  },
+
+  {
+    id:"meonnara",
+    title:"그 먼 나라를 알으십니까",
+    author:"신석정",
+    text:`어머니\n당신은 그 먼 나라를 알으십니까?\n\n깊은 삼림 지대를 끼고 돌면\n고요한 호수에 흰 물새 날고,\n좁은 들길에 야생 마늘 냄새가 나는 아름다운 그 나라를\n알으십니까?\n\n그 나라에 가실 때에는 부디 잊지 마세요.\n나와 같이 그 나라에 가서\n비둘기를 키웁시다.\n\n어머니\n당신은 그 먼 나라를 알으십니까?`,
+    gloss:"삼림 지대 : 숲이 우거진 곳\n알으십니까 : '아십니까'의 옛 표현\n* 이상향(마음속 그리는 평화로운 세계)을 어머니께 말 건네듯 노래한 시예요.",
+    stages:[
+      { label:"1단계 · 시적 화자",
+        stem:"이 시의 화자는 누구에게 말하고 있나요?",
+        help:"반복해서 부르는 말이 있어요.",
+        options:[
+          "친구에게","어머니에게","임금님에게","자기 자신에게만"],
+        answer:1,
+        explain:"'어머니, 당신은…'이라고 거듭 부르는 데서, 화자는 어머니에게 말을 건네고 있음을 알 수 있어요.",
+        hint:"시의 처음과 끝에서 똑같이 부르는 사람이 있어요." },
+      { label:"2단계 · 대상·상황",
+        stem:"화자가 말하는 '그 먼 나라'는 어떤 곳인가요?",
+        help:"흰 물새, 고요한 호수, 아름다운 들길… 어떤 느낌의 공간인가요?",
+        options:[
+          "전쟁이 벌어지는 무서운 곳",
+          "복잡하고 시끄러운 도시",
+          "춥고 황량한 사막",
+          "평화롭고 아름다운 이상적인 곳"],
+        answer:3,
+        explain:"흰 물새가 날고 호수가 고요한, 평화롭고 아름다운 곳이에요. 화자가 마음속으로 그리는 이상향(理想鄕)이죠.",
+        hint:"'고요한 호수', '아름다운 그 나라'라고 했어요." },
+      { label:"3단계 · 주된 심상",
+        stem:"이 시에 두드러진 심상은?",
+        help:"흰 물새, 호수, 마늘 냄새… 여러 감각이 쓰였어요.",
+        options:[
+          "소리 중심의 청각적 심상만 있다",
+          "흰 물새·호수 같은 시각적 심상이 중심이고 후각도 쓰인다",
+          "심상이 거의 없다",
+          "차가운 촉각만 나타난다"],
+        answer:1,
+        explain:"'흰 물새', '고요한 호수'의 선명한 시각적 심상이 중심이고, '야생 마늘 냄새'라는 후각적 심상도 더해져 그 나라를 생생하게 그려요.",
+        hint:"'흰 물새'는 눈으로, '마늘 냄새'는 코로 느끼는 이미지예요." },
+      { label:"4단계 · 어조",
+        stem:"이 시의 어조로 가장 알맞은 것은?",
+        help:"어머니를 부르며 '~세요', '~ㅂ시다'라고 말 건네는 방식이에요.",
+        options:[
+          "차갑게 비판하는 어조",
+          "어머니에게 다정히 말 건네는 대화체·친근한 어조",
+          "화를 터뜨리는 영탄적 어조",
+          "사실만 건조하게 말하는 어조"],
+        answer:1,
+        explain:"'어머니, …알으십니까?', '부디 잊지 마세요'처럼 어머니에게 조곤조곤 말을 건네는 대화체의 다정한 어조예요.",
+        hint:"묻고(알으십니까?) 권하는(가서 키웁시다) 말투는 누구와 이야기하는 느낌인가요?" },
+      { label:"5단계 · 태도·정서",
+        stem:"화자의 태도·정서로 가장 알맞은 것은?",
+        help:"그 먼 나라를 향한 화자의 마음은?",
+        options:[
+          "이상적인 세계를 간절히 동경하는 마음",
+          "현실에 만족해 변화를 싫어하는 마음",
+          "대상을 미워하고 비웃는 마음",
+          "아무 관심 없는 무덤덤한 마음"],
+        answer:0,
+        explain:"평화로운 '그 먼 나라'에 어머니와 함께 가고 싶어 하는, 이상향을 향한 간절한 동경의 정서가 드러나요.",
+        hint:"자꾸 묻고 '같이 가자'고 하는 건, 그곳을 몹시 바라기 때문이에요." },
+      { label:"6단계 · 주제",
+        stem:"조각을 모으면, 이 시의 주제는?",
+        help:"아래 조각을 합쳐 보세요.",
+        assemble:[
+          ["화자","어머니께 말 거는 이"],
+          ["대상","평화로운 먼 나라"],
+          ["어조","다정한 대화체"],
+          ["정서","동경·그리움"]],
+        options:[
+          "도시 생활의 편리함 예찬",
+          "평화로운 이상 세계에 대한 간절한 동경",
+          "어머니에 대한 원망",
+          "전쟁에서 이기려는 의지"],
+        answer:1,
+        explain:"어머니께 다정히 말 걸며·아름다운 먼 나라를·간절히 그리는 마음을 모으면—'평화로운 이상 세계에 대한 동경'이 이 시의 주제예요.",
+        hint:"평화로운 그곳 + 가고 싶은 마음 = ?" }
+    ]
+  },
+
+  {
+    id:"sipnyeon",
+    title:"십 년을 경영하여",
+    author:"송순 (고시조)",
+    text:`십 년을 경영하여 초가삼간 지어 내니\n나 한 간 달 한 간에 청풍 한 간 맡겨 두고\n강산은 들일 데 없으니 둘러 두고 보리라`,
+    gloss:"【현대어 풀이】\n십 년 동안 애써서 작은 초가집 한 채를 지었더니\n내가 한 칸, 달이 한 칸, 맑은 바람에게 한 칸을 맡겨 두고\n강과 산은 들여놓을 곳이 없으니 집 둘레에 둘러 두고 보겠다\n\n경영하여 : 계획하고 애써서\n초가삼간 : 세 칸밖에 안 되는 작은 초가집\n청풍 : 맑은 바람 / 강산 : 자연",
+    stages:[
+      { label:"1단계 · 시적 화자",
+        stem:"이 시조의 화자는 어떤 사람일까요?",
+        help:"작은 초가집을 짓고 달·바람·강산과 함께 지내려는 사람이에요.",
+        options:[
+          "큰 집과 재물을 모으려는 사람",
+          "작은 집에서 자연과 더불어 살려는 사람",
+          "도시에서 벼슬하려는 사람",
+          "전쟁에 나가려는 장군"],
+        answer:1,
+        explain:"십 년 만에 지은 집이 겨우 '초가삼간'인데, 그 작은 칸들을 달·바람에게 내어 주려 해요. 자연과 더불어 사는 삶을 택한 사람이에요.",
+        hint:"십 년이나 걸려 지은 집이 '작은 초가집'이라는 점이 힌트예요." },
+      { label:"2단계 · 대상·상황",
+        stem:"화자가 처한 상황으로 알맞은 것은?",
+        help:"집의 칸을 누구에게 나누어 주고 있나요?",
+        options:[
+          "작은 초가집을 달·바람과 나누어 쓰며 자연 속에 산다",
+          "큰 기와집에서 손님을 맞이한다",
+          "집이 없어 떠돌아다닌다",
+          "성을 쌓아 적을 막는다"],
+        answer:0,
+        explain:"내가 한 칸, 달이 한 칸, 바람이 한 칸—집을 자연과 나누어 쓰고, 강산은 둘러 두고 보겠다고 해요. 자연 속 소박한 삶의 상황이에요.",
+        hint:"'나 한 간, 달 한 간, 청풍 한 간'—칸을 나눠 주는 상대를 보세요." },
+      { label:"3단계 · 주된 심상",
+        stem:"이 시조에 나타난 심상으로 알맞은 것은?",
+        help:"달, 맑은 바람, 강산이 그려 내는 느낌이에요.",
+        options:[
+          "달·바람·강산을 그린 시각적 심상",
+          "시끄러운 도시의 청각적 심상",
+          "쓴맛의 미각적 심상",
+          "무서운 촉각적 심상"],
+        answer:0,
+        explain:"달·맑은 바람·강산이 어우러진 자연의 모습을 눈앞에 그리듯 보여 주는 시각적 심상이 중심이에요.",
+        hint:"달과 강산—머릿속에 어떤 그림이 그려지나요?" },
+      { label:"4단계 · 어조",
+        stem:"이 시조의 어조로 가장 알맞은 것은?",
+        help:"'~보리라'라고 스스로 다짐하듯 맺고 있어요.",
+        options:[
+          "다급하고 불안한 어조",
+          "화를 내며 비판하는 어조",
+          "여유롭고 담담하게 읊조리는 어조",
+          "슬피 우는 어조"],
+        answer:2,
+        explain:"자연을 집에 나누어 두고 '둘러 두고 보리라'며 흐뭇하게 읊조리는, 여유롭고 담담한 어조예요.",
+        hint:"서두르는 느낌인가요, 느긋하게 즐기는 느낌인가요?" },
+      { label:"5단계 · 태도·정서",
+        stem:"화자의 태도·정서로 가장 알맞은 것은?",
+        help:"작은 것에 만족하며 자연을 즐기는 마음이에요.",
+        options:[
+          "더 많은 재물을 바라는 욕심",
+          "자연과 더불어 사는 삶에 만족하는 안분지족의 태도",
+          "세상을 원망하는 마음",
+          "외롭고 쓸쓸한 마음"],
+        answer:1,
+        explain:"작은 초가집에 자연을 들여 만족하는 모습에서, 욕심 없이 분수를 지키며 자연을 즐기는 안분지족·자연 친화의 태도가 드러나요.",
+        hint:"작은 집도 '강산을 둘러 두니' 넉넉하다고 느끼는 마음이에요." },
+      { label:"6단계 · 주제",
+        stem:"조각을 모으면, 이 시조의 주제는?",
+        help:"아래 조각을 합쳐 보세요.",
+        assemble:[
+          ["화자","소박한 삶을 택한 이"],
+          ["상황","자연과 나눠 쓰는 초가집"],
+          ["어조","여유·담담"],
+          ["정서","만족(안분지족)"]],
+        options:[
+          "재물을 많이 모으려는 의지",
+          "자연과 더불어 사는 소박한 삶의 만족(자연 친화·안분지족)",
+          "고향을 잃은 슬픔",
+          "임금에 대한 충성"],
+        answer:1,
+        explain:"소박한 삶·자연과 나눈 집·여유로운 어조·만족하는 마음을 모으면—'자연과 더불어 사는 소박한 삶에 대한 만족'이 주제예요.",
+        hint:"자연 + 작은 집 + 만족 = ?" }
+    ]
+  }
+];
+
+/* ========================= 상태 ========================= */
+const KEY="poemlearn_v1";
+let state = loadState();
+function loadState(){
+  try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.poems) return s; }catch(e){}
+  const s={poems:{}};
+  POEMS.forEach(p=>{ s.poems[p.id]={done:false, stages:p.stages.map(()=>({attempts:0,wrong:false,firstTry:null}))}; });
+  return s;
+}
+function saveState(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+let current=null;   // poem object
+let stepIdx=0;
+
+/* ========================= 화면 전환 ========================= */
+const $home=document.getElementById('home');
+const $study=document.getElementById('study');
+const $report=document.getElementById('report');
+
+function goHome(){
+  current=null;
+  $study.classList.add('hidden'); $report.classList.add('hidden');
+  $home.classList.remove('hidden');
+  renderHome(); window.scrollTo(0,0);
+}
+function renderHome(){
+  const grid=document.getElementById('poemGrid'); grid.innerHTML="";
+  POEMS.forEach(p=>{
+    const st=state.poems[p.id];
+    const b=document.createElement('button'); b.className="poem-btn";
+    b.innerHTML=`<div class="t">${p.title}</div><div class="a">${p.author}</div>`+
+      (st.done?`<span class="done">✓ 완료</span>`:``);
+    b.onclick=()=>startPoem(p.id);
+    grid.appendChild(b);
+  });
+  // 리포트 진입: 하나라도 완료했으면 표시
+  const anyDone=POEMS.some(p=>state.poems[p.id].done);
+  document.getElementById('reportEntry').style.display = anyDone?'block':'none';
+}
+
+function startPoem(id){
+  current=POEMS.find(p=>p.id===id);
+  stepIdx=0;
+  $home.classList.add('hidden'); $report.classList.add('hidden');
+  $study.classList.remove('hidden');
+  renderStep(); window.scrollTo(0,0);
+}
+
+/* ========================= 학습 단계 렌더 ========================= */
+function renderStep(){
+  const p=current, stage=p.stages[stepIdx], n=p.stages.length;
+  document.getElementById('poemLabel').textContent=`${p.title} · ${p.author}`;
+  document.getElementById('stepLabel').textContent=`${stepIdx+1} / ${n}`;
+  // progress
+  const pr=document.getElementById('progress'); pr.innerHTML="";
+  for(let i=0;i<n;i++){ const s=document.createElement('div'); s.className="seg"+(i<=stepIdx?" on":""); pr.appendChild(s); }
+
+  // 시 본문 (항상 보이게)
+  const pc=document.getElementById('poemCard');
+  pc.innerHTML=`<div class="poem-title">${p.title}</div><div class="poem-author">${p.author}</div>`+
+    `<div class="poem-box">${p.text}</div>`+
+    (p.gloss?`<details class="gloss"><summary>낱말·풀이 보기</summary><div class="body">${p.gloss}</div></details>`:``);
+
+  // 질문
+  const qc=document.getElementById('qCard');
+  let assembleHtml="";
+  if(stage.assemble){
+    assembleHtml=`<div class="assemble">`+
+      stage.assemble.map(a=>`<div class="line"><span class="k">${a[0]}</span><span class="v">${a[1]}</span></div>`).join("")+
+      `</div>`;
+  }
+  qc.innerHTML=
+    `<div class="q-stem">${stage.label}</div>`+
+    `<div class="q-help">${stage.stem}</div>`+
+    (stage.help?`<div class="q-help muted" style="margin-top:-8px">💡 ${stage.help}</div>`:``)+
+    assembleHtml+
+    `<div id="opts"></div>`+
+    `<div class="feedback" id="fb"></div>`+
+    `<div class="row" id="navRow"></div>`;
+
+  const opts=document.getElementById('opts');
+  stage.options.forEach((txt,i)=>{
+    const b=document.createElement('button'); b.className="opt";
+    b.innerHTML=`<span class="mark">${"①②③④⑤"[i]}</span>${txt}`;
+    b.onclick=()=>choose(i,b);
+    opts.appendChild(b);
+  });
+
+  renderNav(false);
+}
+
+function renderNav(answered){
+  const row=document.getElementById('navRow'); row.innerHTML="";
+  const stage=current.stages[stepIdx];
+  // 힌트 버튼
+  if(!answered){
+    const h=document.createElement('button'); h.className="btn ghost"; h.textContent="힌트 보기";
+    h.onclick=()=>{ const fb=document.getElementById('fb'); fb.className="feedback hint show";
+      fb.innerHTML=`💡 <b>힌트</b> — ${stage.hint}`; };
+    row.appendChild(h);
+  } else {
+    if(stepIdx < current.stages.length-1){
+      const nx=document.createElement('button'); nx.className="btn primary"; nx.textContent="다음 단계 →";
+      nx.onclick=()=>{ stepIdx++; renderStep(); window.scrollTo(0,0); };
+      row.appendChild(nx);
+    } else {
+      const fin=document.createElement('button'); fin.className="btn primary"; fin.textContent="🎉 이 시 완료!";
+      fin.onclick=finishPoem;
+      row.appendChild(fin);
+    }
+  }
+}
+
+function choose(i,btn){
+  const stage=current.stages[stepIdx];
+  const rec=state.poems[current.id].stages[stepIdx];
+  const correct = (i===stage.answer);
+  rec.attempts++;
+  if(rec.firstTry===null) rec.firstTry=correct;
+
+  const fb=document.getElementById('fb');
+
+  if(correct){
+    btn.classList.add('correct');
+    // 오답 보기들 잠그기
+    document.querySelectorAll('#opts .opt').forEach(b=>b.disabled=true);
+    fb.className="feedback ok show";
+    fb.innerHTML=`✅ <b>맞아요!</b> ${stage.explain}`;
+    saveState();
+    renderNav(true);
+  } else {
+    rec.wrong=true;
+    btn.classList.add('incorrect'); btn.disabled=true;
+    fb.className="feedback no show";
+    fb.innerHTML=`❌ <b>다시 생각해 볼까요?</b> 다른 보기를 눌러 보세요. (힌트 버튼도 있어요)`;
+    saveState();
+  }
+}
+
+function finishPoem(){
+  state.poems[current.id].done=true; saveState();
+  goHome();
+}
+
+/* ========================= 분석 리포트 ========================= */
+const STAGE_NAMES=["시적 화자","대상·상황","심상","어조","태도·정서","주제"];
+
+function showReport(){
+  $home.classList.add('hidden'); $study.classList.add('hidden');
+  $report.classList.remove('hidden');
+
+  // 집계
+  let totalFirst=0, correctFirst=0;
+  const byStage=STAGE_NAMES.map(()=>({first:0, ok:0, retry:0}));
+  const poemRows=[];
+  POEMS.forEach(p=>{
+    const st=state.poems[p.id];
+    let pAns=0,pOk=0,pRetry=0;
+    st.stages.forEach((rec,si)=>{
+      if(rec.firstTry===null) return; // 안 푼 단계
+      totalFirst++; byStage[si].first++;
+      pAns++;
+      if(rec.firstTry){ correctFirst++; byStage[si].ok++; pOk++; }
+      const extra=Math.max(0, rec.attempts-1);
+      byStage[si].retry+=extra; pRetry+=extra;
+    });
+    if(pAns>0) poemRows.push({title:p.title, ans:pAns, ok:pOk, retry:pRetry, done:st.done});
+  });
+
+  const pct = totalFirst? Math.round(correctFirst/totalFirst*100):0;
+
+  // 약점 단계(한 번에 못 맞힌 비율 높은 순)
+  const weak=[];
+  byStage.forEach((b,si)=>{
+    if(b.first===0) return;
+    const missRate=1-(b.ok/b.first);
+    weak.push({name:STAGE_NAMES[si], miss:missRate, first:b.first, retry:b.retry});
+  });
+  weak.sort((a,b)=> (b.miss-a.miss) || (b.retry-a.retry));
+
+  let html=`<button class="back" onclick="goHome()">← 시 목록으로</button>
+    <div class="card report">
+      <h2 style="margin:4px 0 2px">📊 나의 학습 분석</h2>
+      <p class="muted" style="margin:0 0 6px">한 번에 맞힌 비율과, 어떤 단계를 어려워했는지 보여줘요. (선생님과 같이 봐요)</p>
+      <div class="stat">
+        <div class="pill"><div class="n">${correctFirst}/${totalFirst}</div><div class="l">한 번에 맞힌 문항</div></div>
+        <div class="pill"><div class="n">${pct}%</div><div class="l">첫 시도 정답률</div></div>
+        <div class="pill"><div class="n">${POEMS.filter(p=>state.poems[p.id].done).length}/${POEMS.length}</div><div class="l">완료한 시</div></div>
+      </div>`;
+
+  if(totalFirst===0){
+    html+=`<p class="muted">아직 푼 문항이 없어요. 시를 하나 골라 시작해 보세요!</p></div>`;
+    $report.innerHTML=html; window.scrollTo(0,0); return;
+  }
+
+  // 단계별 표
+  html+=`<h3 style="margin:18px 0 6px">단계별로 보면</h3>
+    <table><tr><th>단계</th><th>한 번에 맞힘</th><th>다시 푼 횟수</th><th>상태</th></tr>`;
+  byStage.forEach((b,si)=>{
+    if(b.first===0){ return; }
+    const rate=Math.round(b.ok/b.first*100);
+    const label = rate>=80?`<span class="good">잘함</span>` : rate>=50?`보통` : `<span class="weak">더 연습</span>`;
+    html+=`<tr><td>${STAGE_NAMES[si]}</td><td>${b.ok}/${b.first} (${rate}%)</td><td>${b.retry}회</td><td>${label}</td></tr>`;
+  });
+  html+=`</table>`;
+
+  // 약점 요약
+  const needWork=weak.filter(w=>w.miss>0 || w.retry>0);
+  html+=`<h3 style="margin:18px 0 6px">콕 집어 보면</h3>`;
+  if(needWork.length===0){
+    html+=`<p>모든 단계를 한 번에 맞혔어요. 아주 훌륭해요! 🎉 이제 배운 방법으로 새로운 시도 스스로 읽어 볼 수 있겠어요.</p>`;
+  } else {
+    html+=`<p style="margin:4px 0 8px">특히 이런 단계를 더 연습하면 좋아요:</p><div>`;
+    needWork.slice(0,3).forEach(w=>{
+      html+=`<span class="tag">${w.name}</span>`;
+    });
+    html+=`</div>`;
+    // 맞춤 코멘트
+    const top=needWork[0].name;
+    const tips={
+      "시적 화자":"시에서 '나/우리'가 누구인지, 말하는 사람의 처지를 먼저 찾는 연습을 해요.",
+      "대상·상황":"화자가 무엇을 보고, 어떤 형편에 있는지 시어에서 단서를 찾아봐요.",
+      "심상":"눈·귀·코·혀·피부 중 어떤 감각으로 느껴지는 표현인지 구분해 봐요.",
+      "어조":"문장 끝(종결 어미)과 느낌표·부르는 말을 보면 말투가 보여요.",
+      "태도·정서":"화자가 대상을 좋아하는지/아쉬워하는지, 감정을 나타내는 시어에 표시해 봐요.",
+      "주제":"앞 단계(화자·상황·어조·정서)에서 찾은 것을 한 문장으로 이어 보면 주제가 돼요."
+    };
+    html+=`<p style="margin-top:10px">👉 <b>${top}</b> — ${tips[top]||""}</p>`;
+  }
+
+  // 시별 요약
+  html+=`<h3 style="margin:18px 0 6px">시별 기록</h3><div>`;
+  poemRows.forEach(r=>{
+    const cls = (r.ok===r.ans && r.retry===0)?"tag ok":"tag";
+    html+=`<span class="${cls}">${r.title} · ${r.ok}/${r.ans}${r.retry?` (다시 ${r.retry}회)`:``}</span>`;
+  });
+  html+=`</div>`;
+
+  html+=`<div class="row" style="margin-top:18px">
+      <button class="btn ghost" onclick="goHome()">시 더 풀기</button>
+      <button class="btn ghost" onclick="resetAll()">기록 지우고 처음부터</button>
+    </div></div>`;
+
+  $report.innerHTML=html; window.scrollTo(0,0);
+}
+
+function resetAll(){
+  if(!confirm("지금까지의 학습 기록을 모두 지울까요?")) return;
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  state=loadState(); goHome();
+}
+
+/* ========================= 시작 ========================= */
+renderHome();
+</script>
+</body>
+</html>
